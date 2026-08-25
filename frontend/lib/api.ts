@@ -52,25 +52,45 @@ export interface ConversationDetail {
   messages: MessageItem[];
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
+// Smart API URL resolver
+function getApiBaseUrl(): string {
+  let envUrl = process.env.NEXT_PUBLIC_API_URL;
+  
+  if (envUrl && envUrl.trim()) {
+    envUrl = envUrl.trim();
+    if (!envUrl.startsWith('http://') && !envUrl.startsWith('https://')) {
+      envUrl = `https://${envUrl}`;
+    }
+    return envUrl.replace(/\/+$/, '');
+  }
+
+  // Fallback for production Azure domain
+  if (typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
+    return 'https://mindvault-api-chbkczacaca5hbhv.polandcentral-01.azurewebsites.net/api/v1';
+  }
+
+  return 'http://127.0.0.1:8000/api/v1';
+}
+
+const getUrl = (path: string) => `${getApiBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`;
 
 export const api = {
   // Health
   async getHealth() {
-    const res = await fetch(`${API_BASE}/health`);
+    const res = await fetch(getUrl('/health'));
     if (!res.ok) throw new Error('Health check failed');
     return res.json();
   },
 
   // Documents
   async getDocuments(): Promise<DocumentItem[]> {
-    const res = await fetch(`${API_BASE}/documents`);
+    const res = await fetch(getUrl('/documents'));
     if (!res.ok) throw new Error('Failed to fetch documents');
     return res.json();
   },
 
   async getStats(): Promise<DocumentStats> {
-    const res = await fetch(`${API_BASE}/documents/stats`);
+    const res = await fetch(getUrl('/documents/stats'));
     if (!res.ok) throw new Error('Failed to fetch stats');
     return res.json();
   },
@@ -78,7 +98,7 @@ export const api = {
   async uploadDocument(file: File): Promise<DocumentItem> {
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch(`${API_BASE}/documents/upload`, {
+    const res = await fetch(getUrl('/documents/upload'), {
       method: 'POST',
       body: formData,
     });
@@ -90,14 +110,14 @@ export const api = {
   },
 
   async deleteDocument(id: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/documents/${id}`, {
+    const res = await fetch(getUrl(`/documents/${id}`), {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Failed to delete document');
   },
 
   async reindexDocument(id: string): Promise<DocumentItem> {
-    const res = await fetch(`${API_BASE}/documents/${id}/reindex`, {
+    const res = await fetch(getUrl(`/documents/${id}/reindex`), {
       method: 'POST',
     });
     if (!res.ok) throw new Error('Failed to reindex document');
@@ -106,19 +126,19 @@ export const api = {
 
   // Conversations & Chat
   async getConversations(): Promise<ConversationSummary[]> {
-    const res = await fetch(`${API_BASE}/chat/conversations`);
+    const res = await fetch(getUrl('/chat/conversations'));
     if (!res.ok) throw new Error('Failed to fetch conversations');
     return res.json();
   },
 
   async getConversation(id: string): Promise<ConversationDetail> {
-    const res = await fetch(`${API_BASE}/chat/conversations/${id}`);
+    const res = await fetch(getUrl(`/chat/conversations/${id}`));
     if (!res.ok) throw new Error('Failed to fetch conversation detail');
     return res.json();
   },
 
   async deleteConversation(id: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/chat/conversations/${id}`, {
+    const res = await fetch(getUrl(`/chat/conversations/${id}`), {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Failed to delete conversation');
@@ -135,7 +155,7 @@ export const api = {
     signal?: AbortSignal
   ) {
     try {
-      const response = await fetch(`${API_BASE}/chat/stream`, {
+      const response = await fetch(getUrl('/chat/stream'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
