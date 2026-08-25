@@ -41,10 +41,14 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Configure CORS for Frontend communication
+# Configure CORS for Frontend communication (supports local and all Azure Static Web Apps subdomains)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=settings.CORS_ORIGINS + [
+        "https://white-river-0329b1403.7.azurestaticapps.net",
+        "https://white-river-0329b1403.azurestaticapps.net"
+    ],
+    allow_origin_regex=r"https://.*\.azurestaticapps\.net",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
